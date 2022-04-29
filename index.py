@@ -1,4 +1,3 @@
-from asyncore import read
 import csv
 import os
 import glob
@@ -37,17 +36,18 @@ insert into TMP_MAKE_DC_ARCHIVE(DCNUM, WSCODE)
 values(\'{dcnum}\', \'{wscode}\');
 """)
 
+def append_enable_disable_triggers_stmt(sqlfile, triggers, enable):
+    enableOrDisbleStr = "enable" if enable else "disable"
+    for trigger in triggers:
+            sqlfile.write(f"""
+alter trigger {trigger} {enableOrDisbleStr};
+""")
+
 
 def append_update_dc_stmt(sqlfile):
+    triggers = ["TUA_STOCK_DEPOTCARD","TIUB_STOCK_DEPOTCARD","TUB_DEPOTCARDS","TUA_DEPOTCARDS"]
+    append_enable_disable_triggers_stmt(sqlfile, triggers, False)
     sqlfile.write("""
-alter trigger TUA_STOCK_DEPOTCARD disable;
-
-alter trigger TIUB_STOCK_DEPOTCARD disable;
-
-alter trigger TUB_DEPOTCARDS disable;
-
-alter trigger TUA_DEPOTCARDS disable;
-
 update STOCK_DEPOTCARD D
    set ARCHIVE = 1
  where     nvl( D.ARCHIVE, 0 ) = 0
@@ -68,15 +68,9 @@ update DEPOTCARDS D
                                        where     DOBJ.CODE = D.WSCODE      
                                              and DOBJ.WSCODE = T.WSCODE
                                              and DOBJ.DIVISION_TYPE = 105 ) );
-
-alter trigger TUA_STOCK_DEPOTCARD enable;
-
-alter trigger TIUB_STOCK_DEPOTCARD enable;
-
-alter trigger TUB_DEPOTCARDS enable;
-
-alter trigger TUA_DEPOTCARDS enable;
 """)
+
+    append_enable_disable_triggers_stmt(sqlfile, triggers, True)
 
 
 def skip_lines_in_csv(reader, n):
